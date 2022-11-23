@@ -147,11 +147,9 @@ mem_init(void)
 	// create initial page directory.
 	kern_pgdir = (pde_t *) boot_alloc(PGSIZE);
 
-	cprintf("%p\n",kern_pgdir);
 
 	memset(kern_pgdir, 0, PGSIZE);
 
-	cprintf("%p\n",kern_pgdir);
 	//////////////////////////////////////////////////////////////////////
 	// Recursively insert PD in itself as a page table, to form
 	// a virtual page table at virtual address UVPT.
@@ -285,7 +283,10 @@ mem_init_mp(void)
 	//     Permissions: kernel RW, user NONE
 	//
 	// LAB 4: Your code here:
-
+	for (int i=0;i<NCPU;++i){
+		uintptr_t kstacktop_i = KSTACKTOP - i * (KSTKSIZE + KSTKGAP);
+		boot_map_region(kern_pgdir, kstacktop_i-KSTKSIZE, KSTKSIZE, PADDR(percpu_kstacks[i]), PTE_W | PTE_P);
+	}
 }
 
 // --------------------------------------------------------------
@@ -328,7 +329,7 @@ page_init(void)
 	size_t i;
 	for (i = 0; i < npages; i++) {
 		pages[i].pp_ref = 0;
-		if (i==0 || (i*PGSIZE >= IOPHYSMEM && i*PGSIZE < EXTPHYSMEM) || (i*PGSIZE>=0x100000 && i*PGSIZE<0x400000)){
+		if (i==0 || (i*PGSIZE >= IOPHYSMEM && i*PGSIZE < EXTPHYSMEM) || (i*PGSIZE>=0x100000 && i*PGSIZE<0x400000) || MPENTRY_PADDR/PGSIZE == i){
 			pages[i].pp_link = NULL;
 		}
 		else{
@@ -607,7 +608,17 @@ mmio_map_region(physaddr_t pa, size_t size)
 	// Hint: The staff solution uses boot_map_region.
 	//
 	// Your code here:
-	panic("mmio_map_region not implemented");
+	int mo = pa%PGSIZE;
+	size+=mo;
+	pa-=mo;
+	if (size%PGSIZE!=0)
+		size=size-size%PGSIZE+PGSIZE;
+	if (base + size>MMIOBASE+0x400000)
+		panic("MMIO region is not enough!!!");
+	boot_map_region(kern_pgdir, base, size, pa, PTE_PCD|PTE_PWT|PTE_W);
+	uint32_t t = base + mo;
+	base += size;
+	return (void *)t;
 }
 
 static uintptr_t user_mem_check_addr;

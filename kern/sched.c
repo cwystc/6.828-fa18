@@ -29,6 +29,28 @@ sched_yield(void)
 	// below to halt the cpu.
 
 	// LAB 4: Your code here.
+	int id;
+	if (curenv==NULL)
+		id=-1;
+	else
+		id = ENVX(curenv->env_id);
+	int h = id;
+	while (1){
+		++h;
+		if (h==id)
+			break;
+		if (h>=NENV){
+			if (id<=0)
+				break;
+			h=0;
+		}
+		if (envs[h].env_status == ENV_RUNNABLE){
+			env_run(&envs[h]);
+		}
+		
+	}
+	if (id>=0 && envs[id].env_status == ENV_RUNNING)
+		env_run(&envs[id]);
 
 	// sched_halt never returns
 	sched_halt();
@@ -75,7 +97,7 @@ sched_halt(void)
 		"pushl $0\n"
 		"pushl $0\n"
 		// Uncomment the following line after completing exercise 13
-		//"sti\n"
+		"sti\n"
 		"1:\n"
 		"hlt\n"
 		"jmp 1b\n"
