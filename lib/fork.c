@@ -25,6 +25,11 @@ pgfault(struct UTrapframe *utf)
 	//   (see <inc/memlayout.h>).
 
 	// LAB 4: Your code here.
+	if ( ((uvpt[(uint32_t)addr/PGSIZE] & PTE_COW) == PTE_COW) && ((err & FEC_WR) == FEC_WR) ){
+
+	}
+	else
+		panic("pgfault: not a write to a copy-on-write page!!!");
 
 	// Allocate a new page, map it at a temporary location (PFTEMP),
 	// copy the data from the old page to the new page, then move the new
@@ -33,8 +38,17 @@ pgfault(struct UTrapframe *utf)
 	//   You should make three system calls.
 
 	// LAB 4: Your code here.
-
-	panic("pgfault not implemented");
+	envid_t id = sys_getenvid();
+	r = sys_page_alloc(id, PFTEMP, PTE_U | PTE_W | PTE_P);
+	if (r<0)
+		panic("pgfault: %e", r);
+	memcpy(PFTEMP, ROUNDDOWN(addr, PGSIZE), PGSIZE);
+	r = sys_page_map(id, PFTEMP, id, ROUNDDOWN(addr, PGSIZE), PTE_U | PTE_W | PTE_P);
+	if (r<0)
+		panic("pgfault: %e", r);
+	r = sys_page_unmap(id, PFTEMP);
+	if (r<0)
+		panic("pgfault: %e", r);
 }
 
 //
@@ -54,7 +68,22 @@ duppage(envid_t envid, unsigned pn)
 	int r;
 
 	// LAB 4: Your code here.
-	panic("duppage not implemented");
+	void * va = (void *)(pn * PGSIZE);
+	envid_t id = sys_getenvid();
+	if ((uvpt[pn] & PTE_W) == PTE_W || (uvpt[pn] & PTE_COW) == PTE_COW){
+		r = sys_page_map(id, va, envid, va, PTE_COW | PTE_U | PTE_P);
+		if (r<0)
+			return r;
+		r = sys_page_map(id, va, id, va, PTE_COW | PTE_U | PTE_P);
+		if (r<0)
+			return r;
+	}
+	else{
+		r = sys_page_map(id, va, envid, va, PTE_U | PTE_P);
+		if (r<0)
+			return r;
+	}
+	
 	return 0;
 }
 
@@ -78,7 +107,32 @@ envid_t
 fork(void)
 {
 	// LAB 4: Your code here.
-	panic("fork not implemented");
+	
+	int r;
+	envid_t id = sys_getenvid();
+	set_pgfault_handler(pgfault);
+	envid_t t = sys_exofork();
+	if (t<0)
+		panic("fork: exofork error!!!");
+	if (t == 0){
+		thisenv = (&envs[ENVX(sys_getenvid())]);
+	}
+	else{
+		for (uint32_t addr = 0;addr<USTACKTOP; addr+=PGSIZE)
+			if ((uvpd[PDX(addr)] & PTE_P) == PTE_P && (uvpt[PGNUM(addr)] & PTE_P) == PTE_P)
+				duppage(t, addr/PGSIZE);
+		r = sys_page_alloc(t, (void *)(UTOP-PGSIZE), PTE_U | PTE_P | PTE_W);
+		if (r<0)
+			panic("fork: %e", r);
+		void _pgfault_upcall();
+		r = sys_env_set_pgfault_upcall(t, _pgfault_upcall);
+		if (r<0)
+			panic("set_pgfault_handler failed!!!");
+		r = sys_env_set_status(t, ENV_RUNNABLE);
+		if (r<0)
+			panic("fork: %e", r);
+	}
+	return t;
 }
 
 // Challenge!
