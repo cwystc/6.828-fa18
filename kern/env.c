@@ -398,7 +398,7 @@ env_create(uint8_t *binary, enum EnvType type)
 	struct Env * e;
 	env_alloc(&e, 0);
 	load_icode(e,binary);
-	(e->env_type) = ENV_TYPE_USER;
+	(e->env_type) = type;
 }
 
 //
