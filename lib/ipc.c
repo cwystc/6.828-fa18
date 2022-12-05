@@ -23,7 +23,6 @@ int32_t
 ipc_recv(envid_t *from_env_store, void *pg, int *perm_store)
 {
 	// LAB 4: Your code here.
-//	cprintf("woshi %d in ipc_recv\n", (int)(thisenv->env_id));
 	if (pg == NULL)
 		pg = (void *)UTOP;
 	int r;
@@ -32,11 +31,8 @@ ipc_recv(envid_t *from_env_store, void *pg, int *perm_store)
 		if (perm_store) (*perm_store)=0;
 		return r;
 	}
-//	cprintf("woshiwoshi %d in ipc_recv\n", (int)(thisenv->env_id));
 	if (from_env_store) (*from_env_store) = thisenv->env_ipc_from;
-//	cprintf("woshiwoshiwoshi %d in ipc_recv\n", (int)(thisenv->env_id));
-	if (perm_store) (*from_env_store) = thisenv->env_ipc_perm;
-//	cprintf("woshiwoshiwoshiwoshi %d in ipc_recv\n", (int)(thisenv->env_id));
+	if (perm_store) (*perm_store) = thisenv->env_ipc_perm;
 	return thisenv->env_ipc_value;
 }
 
