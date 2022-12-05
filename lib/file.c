@@ -116,9 +116,6 @@ devfile_read(struct Fd *fd, void *buf, size_t n)
 	// filling fsipcbuf.read with the request arguments.  The
 	// bytes read will be written back to fsipcbuf by the file
 	// system server.
-
-	cprintf("env %d enter devfile_read \n", thisenv->env_id);
-
 	int r;
 
 	fsipcbuf.read.req_fileid = fd->fd_file.id;
@@ -145,7 +142,16 @@ devfile_write(struct Fd *fd, const void *buf, size_t n)
 	// remember that write is always allowed to write *fewer*
 	// bytes than requested.
 	// LAB 5: Your code here
-	panic("devfile_write not implemented");
+	int r;
+
+	fsipcbuf.write.req_fileid = fd->fd_file.id;
+	fsipcbuf.write.req_n = n;
+	memmove(fsipcbuf.write.req_buf, buf, n);
+	if ((r = fsipc(FSREQ_WRITE, NULL)) < 0)
+		return r;
+	assert(r <= n);
+	assert(r <= PGSIZE);
+	return r;
 }
 
 static int
