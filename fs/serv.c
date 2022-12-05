@@ -9,7 +9,7 @@
 #include "fs.h"
 
 
-#define debug 0
+#define debug 1
 
 // The file system server maintains three structures
 // for each open file.
@@ -108,6 +108,8 @@ serve_open(envid_t envid, struct Fsreq_open *req,
 	int fileid;
 	int r;
 	struct OpenFile *o;
+
+	printf("enter serve_open\n");
 
 	if (debug)
 		cprintf("serve_open %08x %s 0x%x\n", envid, req->req_path, req->req_omode);
@@ -210,11 +212,22 @@ serve_read(envid_t envid, union Fsipc *ipc)
 	struct Fsreq_read *req = &ipc->read;
 	struct Fsret_read *ret = &ipc->readRet;
 
+	printf("enter serve_read\n");
+	
 	if (debug)
 		cprintf("serve_read %08x %08x %08x\n", envid, req->req_fileid, req->req_n);
 
 	// Lab 5: Your code here:
-	return 0;
+	struct OpenFile * o;
+	int r;
+	r = openfile_lookup(envid, req->req_fileid, &o);
+	if (r<0)
+		return r;
+	r = file_read(o->o_file, ret->ret_buf, req->req_n, o->o_fd->fd_offset);
+	if (r<0)
+		return r;
+	o->o_fd->fd_offset += r;
+	return r;
 }
 
 

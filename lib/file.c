@@ -15,14 +15,28 @@ union Fsipc fsipcbuf __attribute__((aligned(PGSIZE)));
 static int
 fsipc(unsigned type, void *dstva)
 {
+
+	cprintf("env %d enter fsipc\n",thisenv->env_id);
+
 	static envid_t fsenv;
+
+	cprintf("%d\n",envs[0].env_type);
+	cprintf("%d\n",envs[1].env_type);
+
 	if (fsenv == 0)
 		fsenv = ipc_find_env(ENV_TYPE_FS);
+	
+
+	cprintf("fsenv = %d\n",fsenv);
+	assert(0);
 
 	static_assert(sizeof(fsipcbuf) == PGSIZE);
 
 	if (debug)
 		cprintf("[%08x] fsipc %d %08x\n", thisenv->env_id, type, *(uint32_t *)&fsipcbuf);
+
+
+	cprintf("in fsipc, env %d send to env %d\n", thisenv->env_id, fsenv);
 
 	ipc_send(fsenv, type, &fsipcbuf, PTE_P | PTE_W | PTE_U);
 	return ipc_recv(NULL, dstva, NULL);
@@ -67,6 +81,8 @@ open(const char *path, int mode)
 	// Return the file descriptor index.
 	// If any step after fd_alloc fails, use fd_close to free the
 	// file descriptor.
+
+	cprintf("env %d enter open\n", thisenv->env_id);
 
 	int r;
 	struct Fd *fd;
@@ -115,6 +131,9 @@ devfile_read(struct Fd *fd, void *buf, size_t n)
 	// filling fsipcbuf.read with the request arguments.  The
 	// bytes read will be written back to fsipcbuf by the file
 	// system server.
+
+	cprintf("env %d enter devfile_read \n", thisenv->env_id);
+
 	int r;
 
 	fsipcbuf.read.req_fileid = fd->fd_file.id;
